@@ -1,6 +1,6 @@
-# 🏥 ArogyaSathi – Offline Mobile EHR
+# 🏥 ArogyaSathi – Offline Mobile Health Record System
 
-ArogyaSathi is an **offline-first mobile Electronic Health Record (EHR)** system designed for ASHA workers in rural and low-connectivity areas. It enables secure patient management, visit tracking, vaccination & ANC reminders, and automatic data synchronization when internet connectivity becomes available.
+ArogyaSathi is an offline-first mobile application designed for ASHA workers in rural and low-connectivity areas. It enables secure patient registration, visit tracking, vaccination & ANC reminders, and automatic data synchronization when internet connectivity becomes available.
 
 ---
 
@@ -20,8 +20,15 @@ ArogyaSathi is an **offline-first mobile Electronic Health Record (EHR)** system
 - Offline-first architecture  
 - Secure patient registration & visit tracking  
 - Vaccination & ANC reminders  
-- Automatic sync when internet is available  
+- Automatic data sync when internet is available  
 - Role-based dashboards (ASHA / PHC)  
+
+---
+
+## 🏗 Architecture
+
+Offline-First Client–Server Model  
+Mobile App (Flutter + SQLite) ↔ Backend (FastAPI + SQLite)
 
 ---
 
