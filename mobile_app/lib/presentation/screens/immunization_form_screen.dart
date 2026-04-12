@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:uuid/uuid.dart';
+import 'package:intl/intl.dart';
 import '../../data/local/database_helper.dart';
 
 class ImmunizationFormScreen extends StatefulWidget {
@@ -15,17 +16,43 @@ class ImmunizationFormScreen extends StatefulWidget {
 
 class _ImmunizationFormScreenState extends State<ImmunizationFormScreen> {
   final _formKey = GlobalKey<FormState>();
-  String _selectedVaccine = 'BCG';
-  int _doseNumber = 1;
-  DateTime _administeredDate = DateTime.now();
-  bool _isSubmitting = false;
-
-  final List<String> _vaccines = [
-    'BCG', 'Polio (OPV)', 'Hepatitis B', 'Pentavalent', 'Rotavirus', 'PCV', 'IPV', 'Measles/MR', 'Vitamin A', 'DPT Booster'
+  bool _isLoading = true;
+  List<Map<String, dynamic>> _records = [];
+  
+  final List<Map<String, String>> _vaccineSchedule = [
+    {'name': 'BCG', 'age': 'At Birth'},
+    {'name': 'Hepatitis B-0', 'age': 'At Birth'},
+    {'name': 'OPV-0', 'age': 'At Birth'},
+    {'name': 'OPV-1, 2, 3', 'age': '6, 10, 14 Weeks'},
+    {'name': 'Pentavalent-1, 2, 3', 'age': '6, 10, 14 Weeks'},
+    {'name': 'Rotavirus', 'age': '6, 10, 14 Weeks'},
+    {'name': 'PCV', 'age': '6, 14 Weeks & 9 Months'},
+    {'name': 'MR / Measles', 'age': '9-12 Months'},
+    {'name': 'Vitamin A', 'age': '9 Months'},
+    {'name': 'DPT Booster-1', 'age': '16-24 Months'},
   ];
 
-  Future<void> _saveImmunization() async {
-    setState(() => _isSubmitting = true);
+  @override
+  void initState() {
+    super.initState();
+    _loadRecords();
+  }
+
+  Future<void> _loadRecords() async {
+    setState(() => _isLoading = true);
+    try {
+      final db = await DatabaseHelper().database;
+      final result = await db.query('Immunization_Record', where: 'patient_id = ?', whereArgs: [widget.patientId]);
+      setState(() {
+        _records = result;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _markAdministered(String vaccineName) async {
     try {
       final db = await DatabaseHelper().database;
       final recordId = const Uuid().v4();
@@ -35,10 +62,10 @@ class _ImmunizationFormScreenState extends State<ImmunizationFormScreen> {
         await txn.insert('Immunization_Record', {
           'immunization_id': recordId,
           'patient_id': widget.patientId,
-          'vaccine_name': _selectedVaccine,
-          'dose_number': _doseNumber,
-          'date_administered': _administeredDate.toIso8601String(),
-          'next_due_date': DateTime.now().add(const Duration(days: 30)).toIso8601String(), // Mock logic
+          'vaccine_name': vaccineName,
+          'dose_number': 1,
+          'date_administered': timestamp,
+          'next_due_date': DateTime.now().add(const Duration(days: 30)).toIso8601String(),
           'last_modified_at': timestamp,
           'is_deleted': 0,
         });
@@ -52,14 +79,10 @@ class _ImmunizationFormScreenState extends State<ImmunizationFormScreen> {
         });
       });
 
-      if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Vaccination recorded successfully")));
-      }
+      _loadRecords();
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("$vaccineName recorded successfully")));
     } catch (e) {
-      print(e);
-    } finally {
-      setState(() => _isSubmitting = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
     }
   }
 
@@ -68,56 +91,123 @@ class _ImmunizationFormScreenState extends State<ImmunizationFormScreen> {
     const primaryColor = Color(0xFFD35400);
 
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text("Child Immunization", style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
-        backgroundColor: primaryColor,
-        iconTheme: const IconThemeData(color: Colors.white),
+        title: Text("Child Immunization", style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 18, color: const Color(0xFF1D2939))),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: true,
+        leading: IconButton(icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF1D2939), size: 20), onPressed: () => Navigator.pop(context)),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+      body: _isLoading 
+        ? const Center(child: CircularProgressIndicator(color: primaryColor))
+        : Column(
             children: [
-              Text("Child: ${widget.patientName}", style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold)),
-              const Divider(height: 32),
-              
-              _label("Select Vaccine"),
-              DropdownButtonFormField<String>(
-                value: _selectedVaccine,
-                decoration: InputDecoration(border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
-                items: _vaccines.map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
-                onChanged: (v) => setState(() => _selectedVaccine = v!),
+              _buildChildHeader(primaryColor),
+              _buildStatsRow(),
+              const Divider(height: 1),
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.all(24),
+                  itemCount: _vaccineSchedule.length,
+                  itemBuilder: (context, index) {
+                    final vaccine = _vaccineSchedule[index];
+                    final isDone = _records.any((r) => r['vaccine_name'] == vaccine['name']);
+                    return _buildVaccineCard(vaccine['name']!, vaccine['age']!, isDone, primaryColor);
+                  },
+                ),
               ),
-              
-              const SizedBox(height: 20),
-              _label("Dose Number"),
-              Row(
-                children: [1, 2, 3, 4, 5].map((d) => Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: ChoiceChip(
-                    label: Text("Dose $d"),
-                    selected: _doseNumber == d,
-                    onSelected: (s) => setState(() => _doseNumber = d),
-                    selectedColor: primaryColor.withOpacity(0.2),
-                    labelStyle: TextStyle(color: _doseNumber == d ? primaryColor : Colors.black),
-                  ),
-                )).toList(),
-              ),
-
-              const SizedBox(height: 32),
-              ElevatedButton(
-                onPressed: _isSubmitting ? null : _saveImmunization,
-                style: ElevatedButton.styleFrom(backgroundColor: primaryColor, minimumSize: const Size(double.infinity, 56)),
-                child: _isSubmitting ? const CircularProgressIndicator(color: Colors.white) : const Text("RECORD VACCINATION", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-              )
             ],
           ),
-        ),
+    );
+  }
+
+  Widget _buildChildHeader(Color primaryColor) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      color: primaryColor.withOpacity(0.05),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: primaryColor, borderRadius: BorderRadius.circular(14)),
+            child: const Icon(Icons.child_care_rounded, color: Colors.white, size: 28),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(widget.patientName, style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 18, color: const Color(0xFF1D2939))),
+                Text("Immunization Status: Partially Vaccinated", style: GoogleFonts.poppins(fontSize: 12, color: const Color(0xFF667085))),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _label(String text) => Padding(padding: const EdgeInsets.only(bottom: 8), child: Text(text, style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: Colors.blueGrey)));
+  Widget _buildStatsRow() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          _statItem("Total Due", "03", Colors.orange),
+          _statItem("Completed", "${_records.length}", const Color(0xFF27AE60)),
+          _statItem("Overdue", "01", Colors.redAccent),
+        ],
+      ),
+    );
+  }
+
+  Widget _statItem(String label, String value, Color color) {
+    return Column(
+      children: [
+        Text(value, style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold, color: color)),
+        Text(label, style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w500, color: const Color(0xFF667085))),
+      ],
+    );
+  }
+
+  Widget _buildVaccineCard(String name, String age, bool isDone, Color primaryColor) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: isDone ? const Color(0xFFD1FAE5) : const Color(0xFFEAECF0)),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: isDone ? const Color(0xFFD1FAE5) : const Color(0xFFF9FAFB), borderRadius: BorderRadius.circular(12)),
+            child: Icon(isDone ? Icons.check_circle_rounded : Icons.vaccines_rounded, color: isDone ? const Color(0xFF10B981) : const Color(0xFF667085)),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(name, style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 15, color: const Color(0xFF1D2939))),
+                Text("Age: $age", style: GoogleFonts.poppins(fontSize: 12, color: const Color(0xFF667085))),
+              ],
+            ),
+          ),
+          if (!isDone) 
+            TextButton(
+              onPressed: () => _markAdministered(name),
+              style: TextButton.styleFrom(backgroundColor: primaryColor.withOpacity(0.1), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+              child: Text("ADMINISTER", style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.bold, color: primaryColor)),
+            )
+          else 
+            Text("DONE", style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.bold, color: const Color(0xFF10B981))),
+        ],
+      ),
+    );
+  }
 }
