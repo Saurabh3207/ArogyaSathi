@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../data/models/household_model.dart';
 import '../../data/models/patient_model.dart';
 import '../../data/repositories/household_repository.dart';
@@ -58,22 +59,29 @@ class _HouseholdRegistrationScreenState extends State<HouseholdRegistrationScree
     setState(() => _isSubmitting = true);
 
     try {
+      final prefs = await SharedPreferences.getInstance();
+      final ashaId = prefs.getString('asha_id') ?? "ASHA-001";
+
       final household = Household(
-        ashaId: "ASHA-001", // TODO: Get from Auth/Session
+        ashaId: ashaId,
         houseNumber: _houseNoController.text,
         headOfFamilyName: _headNameController.text,
-        address: "${_landmarkController.text}, ${_selectedLocality ?? ''}",
+        address: _landmarkController.text, // Simplified for now
+        landmark: _landmarkController.text,
+        locality: _selectedLocality,
+        houseType: _selectedHouseType,
+        hasToilet: _hasToilet,
         lastModifiedAt: DateTime.now().toIso8601String(),
-        // Additional fields can be mapped here or stored in a JSON column if needed
       );
 
       await _repository.insert(household);
 
       // 2. Automatically register the Head as the first Patient (Member)
+      // Note: Triggers in DB will automatically increment total_members count
       final headAsPatient = Patient(
         householdId: household.householdId,
         firstName: _headNameController.text,
-        dateOfBirth: "01/01/1980", // Mock for now, usually heads are adults
+        dateOfBirth: "01/01/${DateTime.now().year - int.parse(_ageController.text)}", // Improved age calculation
         gender: _selectedGender ?? 'Male',
         citizenCategory: _selectedCategory ?? 'General',
         migrationStatus: 'Resident',
@@ -197,7 +205,7 @@ class _HouseholdRegistrationScreenState extends State<HouseholdRegistrationScree
           width: 32,
           height: 32,
           decoration: BoxDecoration(
-            color: isCurrent ? Colors.white : (isActive ? Colors.white.withOpacity(0.4) : Colors.transparent),
+            color: isCurrent ? Colors.white : (isActive ? Colors.white.withValues(alpha: 0.4) : Colors.transparent),
             shape: BoxShape.circle,
             border: Border.all(color: Colors.white, width: 2),
           ),
@@ -229,7 +237,7 @@ class _HouseholdRegistrationScreenState extends State<HouseholdRegistrationScree
       width: 40,
       height: 2,
       margin: const EdgeInsets.only(left: 8, right: 8, bottom: 16),
-      color: _currentStep > step ? Colors.white : Colors.white.withOpacity(0.3),
+      color: _currentStep > step ? Colors.white : Colors.white.withValues(alpha: 0.3),
     );
   }
 
@@ -347,6 +355,15 @@ class _HouseholdRegistrationScreenState extends State<HouseholdRegistrationScree
           controller: controller,
           keyboardType: keyboardType,
           style: GoogleFonts.poppins(fontSize: 16),
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'This field is required';
+            }
+            if (label == "Phone Number" && !RegExp(r'^[0-9]{10}$').hasMatch(value)) {
+              return 'Enter a valid 10-digit phone number';
+            }
+            return null;
+          },
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: GoogleFonts.poppins(color: const Color(0xFF98A2B3), fontSize: 14),
@@ -391,7 +408,7 @@ class _HouseholdRegistrationScreenState extends State<HouseholdRegistrationScree
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Colors.white,
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -5))],
       ),
       child: Row(
         children: [

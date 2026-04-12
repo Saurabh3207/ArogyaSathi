@@ -85,4 +85,75 @@ class AppLocalizationsMr extends AppLocalizations {
 
   @override
   String get totalPatients => 'एकूण रुग्ण';
+
+  @override
+  String get ncdScreeningTitle => 'NCD तपासणी';
+
+  @override
+  String get bloodPressure => 'रक्तदाब';
+
+  @override
+  String get systolic => 'सिस्टोलिक';
+
+  @override
+  String get diastolic => 'डायस्टोलिक';
+
+  @override
+  String get bloodSugar => 'रक्त शर्करा (RBS)';
+
+  @override
+  String get height => 'उंची';
+
+  @override
+  String get weight => 'वजन';
+
+  @override
+  String get symptoms => 'लक्षणे';
+
+  @override
+  String get submitScreening => 'तपासणी सबमिट करा';
+
+  @override
+  String get screeningRecorded => 'तपासणी नोंदवली';
+
+  @override
+  String screeningSavedLocally(Object patientName) {
+    return '$patientName साठी NCD तपासणी स्थानिक पातळीवर जतन केली आहे.';
+  }
+
+  @override
+  String get childImmunization => 'बाल लसीकरण';
+
+  @override
+  String get vaccineName => 'लसीचे नाव';
+
+  @override
+  String get doseNumber => 'डोस क्रमांक';
+
+  @override
+  String get dateAdministered => 'लस दिल्याची तारीख';
+
+  @override
+  String get administer => 'लस द्या';
+
+  @override
+  String get totalDue => 'एकूण येणे';
+
+  @override
+  String get completed => 'पूर्ण झाले';
+
+  @override
+  String get overdue => 'थकीत';
+
+  @override
+  String get age => 'वय';
+
+  @override
+  String get vitalStatistics => 'महत्वाच्या सांख्यिकी';
+
+  @override
+  String get physicalMarkers => 'शारीरिक खुणा';
+
+  @override
+  String get riskIndicators => 'धोका निर्देशक';
 }

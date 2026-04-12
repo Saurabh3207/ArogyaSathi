@@ -103,7 +103,7 @@ class _MaternalHealthScreenState extends State<MaternalHealthScreen> {
       decoration: BoxDecoration(
         color: primaryColor,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: primaryColor.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 6))],
+        boxShadow: [BoxShadow(color: primaryColor.withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 6))],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -122,7 +122,7 @@ class _MaternalHealthScreenState extends State<MaternalHealthScreen> {
     return Column(
       children: [
         Text(value, style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
-        Text(label, style: GoogleFonts.poppins(fontSize: 11, color: Colors.white.withOpacity(0.8), fontWeight: FontWeight.w500)),
+        Text(label, style: GoogleFonts.poppins(fontSize: 11, color: Colors.white.withValues(alpha: 0.8), fontWeight: FontWeight.w500)),
       ],
     );
   }
@@ -183,7 +183,7 @@ class _MaternalHealthScreenState extends State<MaternalHealthScreen> {
                 if (patient.isHighRisk == 1)
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(color: const Color(0xFFFFF5F5), borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.redAccent.withOpacity(0.2))),
+                    decoration: BoxDecoration(color: const Color(0xFFFFF5F5), borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.redAccent.withValues(alpha: 0.2))),
                     child: Text("HIGH RISK", style: GoogleFonts.poppins(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.redAccent)),
                   ),
               ],

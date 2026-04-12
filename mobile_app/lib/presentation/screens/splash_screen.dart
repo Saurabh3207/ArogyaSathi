@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -26,12 +27,12 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
     _fadeAnimation = CurvedAnimation(parent: _controller, curve: Curves.easeIn);
     _controller.forward();
-    _navigateToLogin();
+    _navigateToNext();
   }
 
-  _navigateToLogin() async {
-    // Stage 1: Show only the image for 3 seconds
-    await Future.delayed(const Duration(seconds: 3));
+  _navigateToNext() async {
+    // Stage 1: Show only the image for 1.5 seconds (Faster)
+    await Future.delayed(const Duration(milliseconds: 1500));
     
     if (mounted) {
       setState(() {
@@ -39,17 +40,21 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       });
     }
 
-    // Stage 2: Show image + loader for 2 more seconds
-    await Future.delayed(const Duration(seconds: 2));
+    // Stage 2: Check Session
+    final prefs = await SharedPreferences.getInstance();
+    final bool isLoggedIn = prefs.getString('asha_id') != null;
+
+    // Wait for remaining duration
+    await Future.delayed(const Duration(seconds: 1));
     
     if (mounted) {
       // Re-enable status bar before leaving
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-      SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.dark,
-      ));
-      Navigator.pushReplacementNamed(context, '/login');
+      if (isLoggedIn) {
+        Navigator.pushReplacementNamed(context, '/dashboard');
+      } else {
+        Navigator.pushReplacementNamed(context, '/login');
+      }
     }
   }
 
@@ -71,7 +76,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
               fit: BoxFit.cover,
             ),
           ),
-          // Subtle Loading Indicator - Appears after 3 seconds
+          // Subtle Loading Indicator - Appears after delay
           if (_showLoader)
             Positioned(
               bottom: 80,
@@ -93,7 +98,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                     Text(
                       "Verifying Session & Syncing...",
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.8),
+                        color: Colors.white.withValues(alpha: 0.8),
                         fontSize: 11,
                         fontWeight: FontWeight.w500,
                         letterSpacing: 0.8,

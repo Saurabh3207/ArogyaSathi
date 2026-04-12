@@ -6,6 +6,7 @@ class SyncStatus {
   final String entityId;
   final String operation; // 'CREATE', 'UPDATE', 'SOFT_DELETE'
   final String syncStatus; // 'PENDING', 'SYNCED'
+  final String createdAt;
 
   SyncStatus({
     String? syncId,
@@ -13,7 +14,9 @@ class SyncStatus {
     required this.entityId,
     required this.operation,
     this.syncStatus = 'PENDING',
-  }) : syncId = syncId ?? const Uuid().v4();
+    String? createdAt,
+  }) : syncId = syncId ?? const Uuid().v4(),
+       createdAt = createdAt ?? DateTime.now().toIso8601String();
 
   Map<String, dynamic> toMap() {
     return {
@@ -22,6 +25,7 @@ class SyncStatus {
       'entity_id': entityId,
       'operation': operation,
       'sync_status': syncStatus,
+      'created_at': createdAt,
     };
   }
 
@@ -32,6 +36,7 @@ class SyncStatus {
       entityId: map['entity_id'],
       operation: map['operation'],
       syncStatus: map['sync_status'],
+      createdAt: map['created_at'],
     );
   }
 }

@@ -85,4 +85,75 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get totalPatients => 'Total Patients';
+
+  @override
+  String get ncdScreeningTitle => 'NCD Screening';
+
+  @override
+  String get bloodPressure => 'Blood Pressure';
+
+  @override
+  String get systolic => 'Systolic';
+
+  @override
+  String get diastolic => 'Diastolic';
+
+  @override
+  String get bloodSugar => 'Blood Sugar (RBS)';
+
+  @override
+  String get height => 'Height';
+
+  @override
+  String get weight => 'Weight';
+
+  @override
+  String get symptoms => 'Symptoms';
+
+  @override
+  String get submitScreening => 'SUBMIT SCREENING';
+
+  @override
+  String get screeningRecorded => 'Screening Recorded';
+
+  @override
+  String screeningSavedLocally(Object patientName) {
+    return 'NCD screening for $patientName has been saved locally.';
+  }
+
+  @override
+  String get childImmunization => 'Child Immunization';
+
+  @override
+  String get vaccineName => 'Vaccine Name';
+
+  @override
+  String get doseNumber => 'Dose Number';
+
+  @override
+  String get dateAdministered => 'Date Administered';
+
+  @override
+  String get administer => 'ADMINISTER';
+
+  @override
+  String get totalDue => 'Total Due';
+
+  @override
+  String get completed => 'Completed';
+
+  @override
+  String get overdue => 'Overdue';
+
+  @override
+  String get age => 'Age';
+
+  @override
+  String get vitalStatistics => 'Vital Statistics';
+
+  @override
+  String get physicalMarkers => 'Physical Markers';
+
+  @override
+  String get riskIndicators => 'Risk Indicators';
 }

@@ -1,4 +1,3 @@
-import 'package:sqflite/sqflite.dart';
 import '../local/database_helper.dart';
 import '../models/asha_worker_model.dart';
 import '../models/sync_status_model.dart';

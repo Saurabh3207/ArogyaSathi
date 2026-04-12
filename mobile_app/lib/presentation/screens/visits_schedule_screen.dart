@@ -25,7 +25,6 @@ class _VisitsScheduleScreenState extends State<VisitsScheduleScreen> {
     setState(() => _isLoading = true);
     try {
       final db = await DatabaseHelper().database;
-      // In a real app, we would filter by _selectedDate
       final result = await db.rawQuery('''
         SELECT r.*, p.first_name, h.address 
         FROM Local_Reminder r
@@ -41,6 +40,112 @@ class _VisitsScheduleScreenState extends State<VisitsScheduleScreen> {
     } catch (e) {
       setState(() => _isLoading = false);
     }
+  }
+
+  void _showPlanVisitDialog() async {
+    final db = await DatabaseHelper().database;
+    final patients = await db.query('Patient', columns: ['patient_id', 'first_name']);
+    
+    if (!mounted) return;
+
+    String? selectedPatientId;
+    String? selectedType = 'Routine Checkup';
+    DateTime selectedDate = DateTime.now();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) => Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom, left: 24, right: 24, top: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text("Plan New Visit", style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.bold, color: const Color(0xFF1D2939))),
+              const SizedBox(height: 24),
+              
+              // Patient Dropdown
+              Text("Select Patient", style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w500, color: const Color(0xFF344054))),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(
+                decoration: _inputDecoration("Search patient...", Icons.person_search_rounded),
+                items: patients.map((p) => DropdownMenuItem(value: p['patient_id'].toString(), child: Text(p['first_name'].toString()))).toList(),
+                onChanged: (val) => setModalState(() => selectedPatientId = val),
+              ),
+              
+              const SizedBox(height: 16),
+              
+              // Visit Type
+              Text("Visit Reason", style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w500, color: const Color(0xFF344054))),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(
+                value: selectedType,
+                decoration: _inputDecoration("Select reason", Icons.medical_information_rounded),
+                items: ['Routine Checkup', 'ANC Visit', 'Immunization', 'NCD Follow-up', 'PNC Visit']
+                    .map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+                onChanged: (val) => setModalState(() => selectedType = val),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Date Picker
+              Text("Scheduled Date", style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w500, color: const Color(0xFF344054))),
+              const SizedBox(height: 8),
+              InkWell(
+                onTap: () async {
+                  final picked = await showDatePicker(context: context, initialDate: selectedDate, firstDate: DateTime.now(), lastDate: DateTime.now().add(const Duration(days: 365)));
+                  if (picked != null) setModalState(() => selectedDate = picked);
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                  decoration: BoxDecoration(border: Border.all(color: const Color(0xFFD0D5DD)), borderRadius: BorderRadius.circular(12)),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.calendar_today_rounded, size: 20, color: Color(0xFF667085)),
+                      const SizedBox(width: 12),
+                      Text(DateFormat('dd MMM, yyyy').format(selectedDate), style: GoogleFonts.poppins(fontSize: 16)),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 32),
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: ElevatedButton(
+                  onPressed: selectedPatientId == null ? null : () async {
+                    await db.insert('Local_Reminder', {
+                      'patient_id': selectedPatientId,
+                      'reminder_type': selectedType,
+                      'scheduled_date': selectedDate.toIso8601String(),
+                      'is_triggered': 0,
+                    });
+                    Navigator.pop(context);
+                    _loadSchedule();
+                  },
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFD35400), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                  child: Text("SCHEDULE VISIT", style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: Colors.white)),
+                ),
+              ),
+              const SizedBox(height: 24),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  InputDecoration _inputDecoration(String hint, IconData icon) {
+    return InputDecoration(
+      hintText: hint,
+      prefixIcon: Icon(icon, size: 20, color: const Color(0xFF667085)),
+      contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFD0D5DD))),
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFD35400), width: 2)),
+    );
   }
 
   @override
@@ -71,6 +176,12 @@ class _VisitsScheduleScreenState extends State<VisitsScheduleScreen> {
                 : _buildTimelineList(primaryColor),
           ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _showPlanVisitDialog,
+        backgroundColor: primaryColor,
+        icon: const Icon(Icons.add_task_rounded, color: Colors.white),
+        label: Text("PLAN VISIT", style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: Colors.white)),
       ),
     );
   }
@@ -119,9 +230,9 @@ class _VisitsScheduleScreenState extends State<VisitsScheduleScreen> {
         return _buildTimelineItem(
           item['first_name'],
           item['reminder_type'],
-          "10:30 AM", // Mock time for UI
+          "10:30 AM", 
           item['address'] ?? 'Ward A, Sector 4',
-          index == 0, // First item is highlighted
+          index == 0, 
           primaryColor,
         );
       },
@@ -137,7 +248,7 @@ class _VisitsScheduleScreenState extends State<VisitsScheduleScreen> {
             Text(time, style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.bold, color: const Color(0xFF667085))),
             Container(
               width: 2,
-              height: 100,
+              height: 120,
               margin: const EdgeInsets.symmetric(vertical: 8),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -166,12 +277,12 @@ class _VisitsScheduleScreenState extends State<VisitsScheduleScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(task, style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.bold, color: primaryColor)),
+                    Text(task.toUpperCase(), style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.bold, color: primaryColor, letterSpacing: 0.5)),
                     if (isActive) Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2), decoration: BoxDecoration(color: const Color(0xFFF0FFF4), borderRadius: BorderRadius.circular(6)), child: const Text("NOW", style: TextStyle(color: Color(0xFF27AE60), fontSize: 10, fontWeight: FontWeight.bold))),
                   ],
                 ),
                 const SizedBox(height: 8),
-                Text(name, style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.bold, color: const Color(0xFF1D2939))),
+                Text(name, style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF1D2939))),
                 const SizedBox(height: 4),
                 Row(
                   children: [
@@ -218,9 +329,15 @@ class _VisitsScheduleScreenState extends State<VisitsScheduleScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.calendar_today_outlined, size: 80, color: Colors.grey[300]),
-          const SizedBox(height: 16),
-          Text("No visits scheduled for today", style: GoogleFonts.poppins(color: Colors.grey[600], fontWeight: FontWeight.w500)),
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(color: const Color(0xFFF9FAFB), shape: BoxShape.circle),
+            child: Icon(Icons.calendar_today_outlined, size: 80, color: Colors.grey[300]),
+          ),
+          const SizedBox(height: 24),
+          Text("No visits scheduled", style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF1D2939))),
+          const SizedBox(height: 8),
+          Text("Tap the button below to plan a visit.", style: GoogleFonts.poppins(color: const Color(0xFF667085))),
         ],
       ),
     );

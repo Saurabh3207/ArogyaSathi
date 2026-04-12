@@ -5,6 +5,8 @@ import 'package:uuid/uuid.dart';
 import '../../data/local/database_helper.dart';
 import '../../data/repositories/asha_repository.dart';
 
+import '../../data/models/sync_status_model.dart';
+
 class MaternalVisitFormScreen extends StatefulWidget {
   final String patientName;
   final String? patientId; // Added patientId
@@ -148,12 +150,13 @@ class _MaternalVisitFormScreenState extends State<MaternalVisitFormScreen> {
     return Text(title, style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16, color: const Color(0xFF344054)));
   }
 
-  Widget _buildInputField(String label, TextEditingController controller, IconData icon) {
+  Widget _buildInputField(String label, TextEditingController controller, IconData icon, {String? suffix}) {
     return TextFormField(
       controller: controller,
       keyboardType: TextInputType.number,
       decoration: InputDecoration(
         labelText: label,
+        suffixText: suffix,
         prefixIcon: Icon(icon, size: 20),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -185,19 +188,18 @@ class _MaternalVisitFormScreenState extends State<MaternalVisitFormScreen> {
           'health_observation': _notesController.text,
           'maternal_weight': double.tryParse(_weightController.text) ?? 0.0,
           'blood_pressure': "${_bpSystolicController.text}/${_bpDiastolicController.text}",
+          'hb_level': double.tryParse(_hbController.text) ?? 0.0, // Added hb_level
           'supplements_given': "${_ifaDistributed ? 'IFA,' : ''}${_calciumDistributed ? 'Calcium' : ''}",
           'last_modified_at': timestamp,
           'is_deleted': 0,
         });
 
         // 2. Track in Sync_Status
-        await txn.insert('Sync_Status', {
-          'sync_id': const Uuid().v4(),
-          'entity_type': 'Health_Visit',
-          'entity_id': visitId,
-          'operation': 'CREATE',
-          'sync_status': 'PENDING',
-        });
+        await txn.insert('Sync_Status', SyncStatus(
+          entityType: 'Health_Visit',
+          entityId: visitId,
+          operation: 'CREATE',
+        ).toMap());
       });
 
       _showSuccessDialog();

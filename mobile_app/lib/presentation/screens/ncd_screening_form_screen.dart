@@ -3,6 +3,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:uuid/uuid.dart';
 import '../../data/local/database_helper.dart';
 
+import '../../data/models/sync_status_model.dart';
+import '../../generated/app_localizations.dart';
+
 class NCDScreeningFormScreen extends StatefulWidget {
   final String patientId;
   final String patientName;
@@ -71,13 +74,12 @@ class _NCDScreeningFormScreenState extends State<NCDScreeningFormScreen> {
           'last_modified_at': timestamp,
           'is_deleted': 0,
         });
-        await txn.insert('Sync_Status', {
-          'sync_id': const Uuid().v4(),
-          'entity_type': 'NCD_Screening',
-          'entity_id': screeningId,
-          'operation': 'CREATE',
-          'sync_status': 'PENDING',
-        });
+        // 2. Track in Sync_Status
+        await txn.insert('Sync_Status', SyncStatus(
+          entityType: 'NCD_Screening',
+          entityId: screeningId,
+          operation: 'CREATE',
+        ).toMap());
       });
       _showSuccess();
     } catch (e) {
@@ -88,6 +90,7 @@ class _NCDScreeningFormScreenState extends State<NCDScreeningFormScreen> {
   }
 
   void _showSuccess() {
+    final l10n = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -98,9 +101,9 @@ class _NCDScreeningFormScreenState extends State<NCDScreeningFormScreen> {
           children: [
             const Icon(Icons.check_circle_rounded, color: Color(0xFF27AE60), size: 60),
             const SizedBox(height: 16),
-            Text("Screening Recorded", style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 18)),
+            Text(l10n.screeningRecorded, style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 18)),
             const SizedBox(height: 8),
-            Text("NCD screening for ${widget.patientName} has been saved locally.", textAlign: TextAlign.center, style: GoogleFonts.poppins(color: Colors.grey)),
+            Text(l10n.screeningSavedLocally(widget.patientName), textAlign: TextAlign.center, style: GoogleFonts.poppins(color: Colors.grey)),
             const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
@@ -120,11 +123,12 @@ class _NCDScreeningFormScreenState extends State<NCDScreeningFormScreen> {
   @override
   Widget build(BuildContext context) {
     const primaryColor = Color(0xFFD35400);
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text("NCD Screening", style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 18, color: const Color(0xFF1D2939))),
+        title: Text(l10n.ncdScreeningTitle, style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 18, color: const Color(0xFF1D2939))),
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF1D2939), size: 20), onPressed: () => Navigator.pop(context)),
@@ -138,27 +142,27 @@ class _NCDScreeningFormScreenState extends State<NCDScreeningFormScreen> {
             children: [
               _buildPatientBanner(primaryColor),
               const SizedBox(height: 24),
-              _sectionHeader("Vital Statistics", Icons.monitor_heart_rounded),
+              _sectionHeader(l10n.vitalStatistics, Icons.monitor_heart_rounded),
               Row(
                 children: [
-                  Expanded(child: _buildCustomField("Systolic", "120", _systolicController, suffix: "mmHg")),
+                  Expanded(child: _buildCustomField(l10n.systolic, "120", _systolicController, suffix: "mmHg")),
                   const SizedBox(width: 16),
-                  Expanded(child: _buildCustomField("Diastolic", "80", _diastolicController, suffix: "mmHg")),
+                  Expanded(child: _buildCustomField(l10n.diastolic, "80", _diastolicController, suffix: "mmHg")),
                 ],
               ),
               const SizedBox(height: 16),
-              _buildCustomField("Blood Sugar (RBS)", "140", _sugarController, suffix: "mg/dL"),
+              _buildCustomField(l10n.bloodSugar, "140", _sugarController, suffix: "mg/dL"),
               const SizedBox(height: 24),
-              _sectionHeader("Physical Markers", Icons.accessibility_new_rounded),
+              _sectionHeader(l10n.physicalMarkers, Icons.accessibility_new_rounded),
               Row(
                 children: [
-                  Expanded(child: _buildCustomField("Height", "cm", _heightController)),
+                  Expanded(child: _buildCustomField(l10n.height, "cm", _heightController)),
                   const SizedBox(width: 16),
-                  Expanded(child: _buildCustomField("Weight", "kg", _weightController)),
+                  Expanded(child: _buildCustomField(l10n.weight, "kg", _weightController)),
                 ],
               ),
               const SizedBox(height: 24),
-              _sectionHeader("Risk Indicators", Icons.warning_amber_rounded),
+              _sectionHeader(l10n.riskIndicators, Icons.warning_amber_rounded),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
@@ -179,7 +183,7 @@ class _NCDScreeningFormScreenState extends State<NCDScreeningFormScreen> {
                 child: ElevatedButton(
                   onPressed: _isSubmitting ? null : _saveScreening,
                   style: ElevatedButton.styleFrom(backgroundColor: primaryColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
-                  child: _isSubmitting ? const CircularProgressIndicator(color: Colors.white) : const Text("SUBMIT SCREENING", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 1.1)),
+                  child: _isSubmitting ? const CircularProgressIndicator(color: Colors.white) : Text(l10n.submitScreening, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 1.1)),
                 ),
               ),
               const SizedBox(height: 32),
@@ -193,7 +197,7 @@ class _NCDScreeningFormScreenState extends State<NCDScreeningFormScreen> {
   Widget _buildPatientBanner(Color primaryColor) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: primaryColor.withOpacity(0.05), borderRadius: BorderRadius.circular(16), border: Border.all(color: primaryColor.withOpacity(0.1))),
+      decoration: BoxDecoration(color: primaryColor.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(16), border: Border.all(color: primaryColor.withValues(alpha: 0.1))),
       child: Row(
         children: [
           CircleAvatar(backgroundColor: primaryColor, child: const Icon(Icons.person, color: Colors.white)),

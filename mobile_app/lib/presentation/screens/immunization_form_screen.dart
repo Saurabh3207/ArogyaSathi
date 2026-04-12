@@ -4,6 +4,9 @@ import 'package:uuid/uuid.dart';
 import 'package:intl/intl.dart';
 import '../../data/local/database_helper.dart';
 
+import '../../data/models/sync_status_model.dart';
+import '../../generated/app_localizations.dart';
+
 class ImmunizationFormScreen extends StatefulWidget {
   final String patientId;
   final String patientName;
@@ -70,13 +73,11 @@ class _ImmunizationFormScreenState extends State<ImmunizationFormScreen> {
           'is_deleted': 0,
         });
 
-        await txn.insert('Sync_Status', {
-          'sync_id': const Uuid().v4(),
-          'entity_type': 'Immunization_Record',
-          'entity_id': recordId,
-          'operation': 'CREATE',
-          'sync_status': 'PENDING',
-        });
+        await txn.insert('Sync_Status', SyncStatus(
+          entityType: 'Immunization_Record',
+          entityId: recordId,
+          operation: 'CREATE',
+        ).toMap());
       });
 
       _loadRecords();
@@ -89,11 +90,12 @@ class _ImmunizationFormScreenState extends State<ImmunizationFormScreen> {
   @override
   Widget build(BuildContext context) {
     const primaryColor = Color(0xFFD35400);
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text("Child Immunization", style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 18, color: const Color(0xFF1D2939))),
+        title: Text(l10n.childImmunization, style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 18, color: const Color(0xFF1D2939))),
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
@@ -104,7 +106,7 @@ class _ImmunizationFormScreenState extends State<ImmunizationFormScreen> {
         : Column(
             children: [
               _buildChildHeader(primaryColor),
-              _buildStatsRow(),
+              _buildStatsRow(l10n),
               const Divider(height: 1),
               Expanded(
                 child: ListView.builder(
@@ -113,7 +115,7 @@ class _ImmunizationFormScreenState extends State<ImmunizationFormScreen> {
                   itemBuilder: (context, index) {
                     final vaccine = _vaccineSchedule[index];
                     final isDone = _records.any((r) => r['vaccine_name'] == vaccine['name']);
-                    return _buildVaccineCard(vaccine['name']!, vaccine['age']!, isDone, primaryColor);
+                    return _buildVaccineCard(vaccine['name']!, vaccine['age']!, isDone, primaryColor, l10n);
                   },
                 ),
               ),
@@ -148,15 +150,15 @@ class _ImmunizationFormScreenState extends State<ImmunizationFormScreen> {
     );
   }
 
-  Widget _buildStatsRow() {
+  Widget _buildStatsRow(AppLocalizations l10n) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          _statItem("Total Due", "03", Colors.orange),
-          _statItem("Completed", "${_records.length}", const Color(0xFF27AE60)),
-          _statItem("Overdue", "01", Colors.redAccent),
+          _statItem(l10n.totalDue, "03", Colors.orange),
+          _statItem(l10n.completed, "${_records.length}", const Color(0xFF27AE60)),
+          _statItem(l10n.overdue, "01", Colors.redAccent),
         ],
       ),
     );
@@ -171,7 +173,7 @@ class _ImmunizationFormScreenState extends State<ImmunizationFormScreen> {
     );
   }
 
-  Widget _buildVaccineCard(String name, String age, bool isDone, Color primaryColor) {
+  Widget _buildVaccineCard(String name, String age, bool isDone, Color primaryColor, AppLocalizations l10n) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -179,7 +181,7 @@ class _ImmunizationFormScreenState extends State<ImmunizationFormScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: isDone ? const Color(0xFFD1FAE5) : const Color(0xFFEAECF0)),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Row(
         children: [
@@ -194,7 +196,7 @@ class _ImmunizationFormScreenState extends State<ImmunizationFormScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(name, style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 15, color: const Color(0xFF1D2939))),
-                Text("Age: $age", style: GoogleFonts.poppins(fontSize: 12, color: const Color(0xFF667085))),
+                Text("${l10n.age}: $age", style: GoogleFonts.poppins(fontSize: 12, color: const Color(0xFF667085))),
               ],
             ),
           ),
@@ -202,10 +204,10 @@ class _ImmunizationFormScreenState extends State<ImmunizationFormScreen> {
             TextButton(
               onPressed: () => _markAdministered(name),
               style: TextButton.styleFrom(backgroundColor: primaryColor.withValues(alpha: 0.1), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-              child: Text("ADMINISTER", style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.bold, color: primaryColor)),
+              child: Text(l10n.administer, style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.bold, color: primaryColor)),
             )
           else 
-            Text("DONE", style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.bold, color: const Color(0xFF10B981))),
+            Text(l10n.completed.toUpperCase(), style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.bold, color: const Color(0xFF10B981))),
         ],
       ),
     );

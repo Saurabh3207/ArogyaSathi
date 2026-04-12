@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:awesome_notifications/awesome_notifications.dart';
+import 'data/services/sync_manager.dart';
+import 'data/services/notification_service.dart';
 import 'presentation/screens/splash_screen.dart';
 import 'presentation/screens/login_screen.dart';
 import 'presentation/screens/dashboard_screen.dart';
@@ -17,30 +19,39 @@ import 'presentation/screens/maternal_visit_form_screen.dart';
 import 'presentation/screens/sync_center_screen.dart';
 import 'generated/app_localizations.dart';
 
-void main() {
+void main() async {
+  // Use a runZonedGuarded to catch all hidden async errors
   WidgetsFlutterBinding.ensureInitialized();
 
-  AwesomeNotifications().initialize(
-    null,
-    [
-      NotificationChannel(
-        channelGroupKey: 'basic_channel_group',
-        channelKey: 'basic_channel',
-        channelName: 'Basic notifications',
-        channelDescription: 'Notification channel for basic tests',
-        defaultColor: const Color(0xFF9D50BB),
-        ledColor: Colors.white,
-        importance: NotificationImportance.High,
-      )
-    ],
-    channelGroups: [
-      NotificationChannelGroup(
-        channelGroupKey: 'basic_channel_group',
-        channelGroupName: 'Basic group',
-      )
-    ],
-    debug: true,
-  );
+  // 1. Initialize Notifications with a fallback icon
+  try {
+    await AwesomeNotifications().initialize(
+      null, // This uses the default app icon
+      [
+        NotificationChannel(
+          channelGroupKey: 'arogyasathi_group',
+          channelKey: 'alerts',
+          channelName: 'Health Alerts',
+          channelDescription: 'Notification channel for patient follow-ups',
+          defaultColor: const Color(0xFFD35400),
+          ledColor: Colors.white,
+          importance: NotificationImportance.High,
+        )
+      ],
+      channelGroups: [
+        NotificationChannelGroup(
+          channelGroupKey: 'arogyasathi_group',
+          channelGroupName: 'General Alerts',
+        )
+      ],
+      debug: false,
+    );
+  } catch (e) {
+    debugPrint("Notification Initialization Error: $e");
+  }
+
+  // 2. Initialize Sync Manager (Lazy Init)
+  SyncManager().init();
 
   runApp(const ArogyaSathiApp());
 }
@@ -78,7 +89,7 @@ class _ArogyaSathiAppState extends State<ArogyaSathiApp> {
           primary: const Color(0xFFD35400),
           secondary: const Color(0xFF27AE60),
           surface: Colors.white,
-          background: const Color(0xFFF4F7F6), // Slightly cooler background for contrast
+          surfaceContainerHighest: const Color(0xFFF4F7F6),
         ),
         textTheme: const TextTheme(
           headlineLarge: TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF1A252F), letterSpacing: -1.0),
@@ -91,18 +102,9 @@ class _ArogyaSathiAppState extends State<ArogyaSathiApp> {
           filled: true,
           fillColor: Colors.white,
           contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: Colors.grey.shade300, width: 1.5),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: Colors.grey.shade200, width: 1.5),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(color: Color(0xFFD35400), width: 2.5),
-          ),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey.shade300, width: 1.5)),
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey.shade200, width: 1.5)),
+          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFFD35400), width: 2.5)),
           labelStyle: const TextStyle(color: Color(0xFF566573), fontWeight: FontWeight.w500),
           prefixIconColor: const Color(0xFFD35400),
         ),
@@ -113,7 +115,7 @@ class _ArogyaSathiAppState extends State<ArogyaSathiApp> {
             minimumSize: const Size(double.infinity, 60),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
             elevation: 8,
-            shadowColor: const Color(0xFFD35400).withOpacity(0.5),
+            shadowColor: const Color(0xFFD35400).withValues(alpha: 0.5),
           ),
         ),
       ),
@@ -124,8 +126,8 @@ class _ArogyaSathiAppState extends State<ArogyaSathiApp> {
         GlobalCupertinoLocalizations.delegate,
       ],
       supportedLocales: const [
-        Locale('en', ''), // English
-        Locale('mr', ''), // Marathi
+        Locale('en', ''),
+        Locale('mr', ''),
       ],
       locale: _locale,
       initialRoute: '/',
@@ -142,25 +144,16 @@ class _ArogyaSathiAppState extends State<ArogyaSathiApp> {
         '/camps': (context) => const CampManagementScreen(),
         '/maternal-visit': (context) {
           final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
-          return MaternalVisitFormScreen(
-            patientId: args['patientId'],
-            patientName: args['patientName'],
-          );
+          return MaternalVisitFormScreen(patientId: args['patientId'], patientName: args['patientName']);
         },
         '/sync-center': (context) => const SyncCenterScreen(),
         '/ncd_screening': (context) {
           final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
-          return NCDScreeningFormScreen(
-            patientId: args['patientId'],
-            patientName: args['patientName'],
-          );
+          return NCDScreeningFormScreen(patientId: args['patientId'], patientName: args['patientName']);
         },
         '/patient_list': (context) {
           final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
-          return PatientListScreen(
-            householdId: args['householdId'],
-            householdName: args['householdName'],
-          );
+          return PatientListScreen(householdId: args['householdId'], householdName: args['householdName']);
         },
       },
     );

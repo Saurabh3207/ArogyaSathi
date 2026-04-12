@@ -63,7 +63,7 @@ import 'app_localizations_mr.dart';
 /// property.
 abstract class AppLocalizations {
   AppLocalizations(String locale)
-    : localeName = intl.Intl.canonicalizedLocale(locale.toString());
+      : localeName = intl.Intl.canonicalizedLocale(locale.toString());
 
   final String localeName;
 
@@ -86,16 +86,16 @@ abstract class AppLocalizations {
   /// of delegates is preferred or required.
   static const List<LocalizationsDelegate<dynamic>> localizationsDelegates =
       <LocalizationsDelegate<dynamic>>[
-        delegate,
-        GlobalMaterialLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-      ];
+    delegate,
+    GlobalMaterialLocalizations.delegate,
+    GlobalCupertinoLocalizations.delegate,
+    GlobalWidgetsLocalizations.delegate,
+  ];
 
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[
     Locale('en'),
-    Locale('mr'),
+    Locale('mr')
   ];
 
   /// No description provided for @appName.
@@ -253,6 +253,144 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Total Patients'**
   String get totalPatients;
+
+  /// No description provided for @ncdScreeningTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'NCD Screening'**
+  String get ncdScreeningTitle;
+
+  /// No description provided for @bloodPressure.
+  ///
+  /// In en, this message translates to:
+  /// **'Blood Pressure'**
+  String get bloodPressure;
+
+  /// No description provided for @systolic.
+  ///
+  /// In en, this message translates to:
+  /// **'Systolic'**
+  String get systolic;
+
+  /// No description provided for @diastolic.
+  ///
+  /// In en, this message translates to:
+  /// **'Diastolic'**
+  String get diastolic;
+
+  /// No description provided for @bloodSugar.
+  ///
+  /// In en, this message translates to:
+  /// **'Blood Sugar (RBS)'**
+  String get bloodSugar;
+
+  /// No description provided for @height.
+  ///
+  /// In en, this message translates to:
+  /// **'Height'**
+  String get height;
+
+  /// No description provided for @weight.
+  ///
+  /// In en, this message translates to:
+  /// **'Weight'**
+  String get weight;
+
+  /// No description provided for @symptoms.
+  ///
+  /// In en, this message translates to:
+  /// **'Symptoms'**
+  String get symptoms;
+
+  /// No description provided for @submitScreening.
+  ///
+  /// In en, this message translates to:
+  /// **'SUBMIT SCREENING'**
+  String get submitScreening;
+
+  /// No description provided for @screeningRecorded.
+  ///
+  /// In en, this message translates to:
+  /// **'Screening Recorded'**
+  String get screeningRecorded;
+
+  /// No description provided for @screeningSavedLocally.
+  ///
+  /// In en, this message translates to:
+  /// **'NCD screening for {patientName} has been saved locally.'**
+  String screeningSavedLocally(Object patientName);
+
+  /// No description provided for @childImmunization.
+  ///
+  /// In en, this message translates to:
+  /// **'Child Immunization'**
+  String get childImmunization;
+
+  /// No description provided for @vaccineName.
+  ///
+  /// In en, this message translates to:
+  /// **'Vaccine Name'**
+  String get vaccineName;
+
+  /// No description provided for @doseNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Dose Number'**
+  String get doseNumber;
+
+  /// No description provided for @dateAdministered.
+  ///
+  /// In en, this message translates to:
+  /// **'Date Administered'**
+  String get dateAdministered;
+
+  /// No description provided for @administer.
+  ///
+  /// In en, this message translates to:
+  /// **'ADMINISTER'**
+  String get administer;
+
+  /// No description provided for @totalDue.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Due'**
+  String get totalDue;
+
+  /// No description provided for @completed.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed'**
+  String get completed;
+
+  /// No description provided for @overdue.
+  ///
+  /// In en, this message translates to:
+  /// **'Overdue'**
+  String get overdue;
+
+  /// No description provided for @age.
+  ///
+  /// In en, this message translates to:
+  /// **'Age'**
+  String get age;
+
+  /// No description provided for @vitalStatistics.
+  ///
+  /// In en, this message translates to:
+  /// **'Vital Statistics'**
+  String get vitalStatistics;
+
+  /// No description provided for @physicalMarkers.
+  ///
+  /// In en, this message translates to:
+  /// **'Physical Markers'**
+  String get physicalMarkers;
+
+  /// No description provided for @riskIndicators.
+  ///
+  /// In en, this message translates to:
+  /// **'Risk Indicators'**
+  String get riskIndicators;
 }
 
 class _AppLocalizationsDelegate
@@ -282,9 +420,8 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
   }
 
   throw FlutterError(
-    'AppLocalizations.delegate failed to load unsupported locale "$locale". This is likely '
-    'an issue with the localizations generation tool. Please file an issue '
-    'on GitHub with a reproducible sample app and the gen-l10n configuration '
-    'that was used.',
-  );
+      'AppLocalizations.delegate failed to load unsupported locale "$locale". This is likely '
+      'an issue with the localizations generation tool. Please file an issue '
+      'on GitHub with a reproducible sample app and the gen-l10n configuration '
+      'that was used.');
 }

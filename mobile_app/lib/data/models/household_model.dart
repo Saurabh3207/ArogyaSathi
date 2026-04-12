@@ -7,7 +7,11 @@ class Household {
   final String? familySurname;
   final String headOfFamilyName;
   final String address;
+  final String? landmark;
+  final String? locality;
   final String? rationCardType;
+  final String? houseType;
+  final bool hasToilet;
   final int totalMembers;
   final int totalAdults;
   final int totalChildren;
@@ -21,7 +25,11 @@ class Household {
     this.familySurname,
     required this.headOfFamilyName,
     required this.address,
+    this.landmark,
+    this.locality,
     this.rationCardType,
+    this.houseType,
+    this.hasToilet = false,
     this.totalMembers = 0,
     this.totalAdults = 0,
     this.totalChildren = 0,
@@ -37,7 +45,11 @@ class Household {
       'family_surname': familySurname,
       'head_of_family_name': headOfFamilyName,
       'address': address,
+      'landmark': landmark,
+      'locality': locality,
       'ration_card_type': rationCardType,
+      'house_type': houseType,
+      'has_toilet': hasToilet ? 1 : 0,
       'total_members': totalMembers,
       'total_adults': totalAdults,
       'total_children': totalChildren,
@@ -54,12 +66,16 @@ class Household {
       familySurname: map['family_surname'],
       headOfFamilyName: map['head_of_family_name'],
       address: map['address'],
+      landmark: map['landmark'],
+      locality: map['locality'],
       rationCardType: map['ration_card_type'],
-      totalMembers: map['total_members'],
-      totalAdults: map['total_adults'],
-      totalChildren: map['total_children'],
+      houseType: map['house_type'],
+      hasToilet: (map['has_toilet'] ?? 0) == 1,
+      totalMembers: map['total_members'] ?? 0,
+      totalAdults: map['total_adults'] ?? 0,
+      totalChildren: map['total_children'] ?? 0,
       lastModifiedAt: map['last_modified_at'],
-      isDeleted: map['is_deleted'],
+      isDeleted: map['is_deleted'] ?? 0,
     );
   }
 }

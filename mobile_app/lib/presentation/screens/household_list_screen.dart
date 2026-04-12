@@ -106,7 +106,7 @@ class _HouseholdListScreenState extends State<HouseholdListScreen> {
       decoration: BoxDecoration(
         color: primaryColor,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: primaryColor.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 6))],
+        boxShadow: [BoxShadow(color: primaryColor.withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 6))],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -125,7 +125,7 @@ class _HouseholdListScreenState extends State<HouseholdListScreen> {
     return Column(
       children: [
         Text(value, style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
-        Text(label, style: GoogleFonts.poppins(fontSize: 11, color: Colors.white.withOpacity(0.8), fontWeight: FontWeight.w500)),
+        Text(label, style: GoogleFonts.poppins(fontSize: 11, color: Colors.white.withValues(alpha: 0.8), fontWeight: FontWeight.w500)),
       ],
     );
   }
@@ -169,7 +169,7 @@ class _HouseholdListScreenState extends State<HouseholdListScreen> {
         shape: const RoundedRectangleBorder(side: BorderSide.none),
         leading: Container(
           padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(color: primaryColor.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+          decoration: BoxDecoration(color: primaryColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
           child: Icon(Icons.house_rounded, color: primaryColor),
         ),
         title: Text(house.headOfFamilyName, style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16, color: const Color(0xFF1D2939))),
@@ -184,7 +184,7 @@ class _HouseholdListScreenState extends State<HouseholdListScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     _buildInfoRow(Icons.people_alt_rounded, "Members", house.totalMembers.toString()),
-                    _buildInfoRow(Icons.location_city_rounded, "Type", house.houseType ?? "Pucca"),
+                    _buildInfoRow(Icons.location_city_rounded, "Type", house.rationCardType ?? "Pucca"),
                   ],
                 ),
                 const SizedBox(height: 20),

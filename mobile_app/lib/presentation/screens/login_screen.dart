@@ -1,7 +1,7 @@
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../generated/app_localizations.dart';
 import '../../main.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -65,11 +65,40 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     super.dispose();
   }
 
-  void _login() {
+  void _login() async {
     if (_formKey.currentState!.validate()) {
-      Navigator.pushReplacementNamed(context, '/dashboard');
+      setState(() => _isLoggingIn = true);
+      
+      // Simulate network/db delay
+      await Future.delayed(const Duration(seconds: 1));
+
+      // Mock login credentials check
+      final phone = _phoneController.text;
+      final password = _passwordController.text;
+      
+      // Allow the default demo credentials or the specific number used in testing
+      if ((phone == "9999999999" && password == "Sunita@123") || 
+          (phone == "7264833373" && _passwordValid)) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('asha_id', 'ASHA-MAR-4501');
+        await prefs.setString('asha_name', phone == "7264833373" ? 'Suman Tai (ASHA)' : 'सुनीता ताई (Sunita Tai)');
+        await prefs.setString('asha_ward', 'Ward A - Sector 4');
+
+        if (mounted) {
+          Navigator.pushReplacementNamed(context, '/dashboard');
+        }
+      } else {
+        if (mounted) {
+          setState(() => _isLoggingIn = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Invalid phone number or password")),
+          );
+        }
+      }
     }
   }
+
+  bool _isLoggingIn = false;
 
   void _changeLocale(String localeCode) {
     ArogyaSathiApp.setLocale(context, Locale(localeCode, ''));
@@ -155,7 +184,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                       "आरोग्यसाथी",
                       style: GoogleFonts.poppins(
                         fontSize: 18,
-                        color: primaryColor.withOpacity(0.8),
+                        color: primaryColor.withValues(alpha: 0.8),
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -262,7 +291,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                       width: double.infinity,
                       height: 56,
                       child: ElevatedButton(
-                        onPressed: (_phoneValid && _passwordValid) ? _login : null,
+                        onPressed: (_phoneValid && _passwordValid && !_isLoggingIn) ? _login : null,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: primaryColor,
                           disabledBackgroundColor: const Color(0xFFE5E7EB),
@@ -271,15 +300,17 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                             borderRadius: BorderRadius.circular(14),
                           ),
                         ),
-                        child: Text(
-                          "LOGIN",
-                          style: GoogleFonts.poppins(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: (_phoneValid && _passwordValid) ? Colors.white : const Color(0xFF9CA3AF),
-                            letterSpacing: 1.2,
-                          ),
-                        ),
+                        child: _isLoggingIn 
+                          ? const CircularProgressIndicator(color: Colors.white)
+                          : Text(
+                              "LOGIN",
+                              style: GoogleFonts.poppins(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: (_phoneValid && _passwordValid) ? Colors.white : const Color(0xFF9CA3AF),
+                                letterSpacing: 1.2,
+                              ),
+                            ),
                       ),
                     ),
                   ],

@@ -7,8 +7,7 @@ import '../../data/repositories/patient_repository.dart';
 import 'package:uuid/uuid.dart';
 
 class PatientRegistrationScreen extends StatefulWidget {
-  final String? householdId;
-  const PatientRegistrationScreen({super.key, this.householdId});
+  const PatientRegistrationScreen({super.key});
 
   @override
   State<PatientRegistrationScreen> createState() => _PatientRegistrationScreenState();
@@ -27,15 +26,14 @@ class _PatientRegistrationScreenState extends State<PatientRegistrationScreen> {
   final _nameController = TextEditingController();
   final _dobController = TextEditingController();
   final _phoneController = TextEditingController();
-  final _weightController = TextEditingController();
+  final _aadhaarController = TextEditingController();
   
   // Form Values
   String? _selectedGender;
-  String? _selectedBloodGroup;
-  String? _selectedRelationship;
   String? _selectedCategory;
   String? _selectedMaritalStatus;
   String? _selectedMigrationStatus = 'Resident';
+  String? _selectedContraceptive;
   bool _isHighRisk = false;
 
   @override
@@ -53,7 +51,7 @@ class _PatientRegistrationScreenState extends State<PatientRegistrationScreen> {
     _nameController.dispose();
     _dobController.dispose();
     _phoneController.dispose();
-    _weightController.dispose();
+    _aadhaarController.dispose();
     super.dispose();
   }
 
@@ -84,10 +82,28 @@ class _PatientRegistrationScreenState extends State<PatientRegistrationScreen> {
   }
 
   void _nextStep() {
+    if (_currentStep == 0) {
+      if (!_formKey.currentState!.validate()) return;
+    }
     if (_currentStep < 2) {
       setState(() => _currentStep++);
     } else {
       _submitForm();
+    }
+  }
+
+  int? _calculateAge() {
+    if (_dobController.text.isEmpty) return null;
+    try {
+      DateTime dob = DateFormat('dd/MM/yyyy').parse(_dobController.text);
+      DateTime today = DateTime.now();
+      int age = today.year - dob.year;
+      if (today.month < dob.month || (today.month == dob.month && today.day < dob.day)) {
+        age--;
+      }
+      return age;
+    } catch (e) {
+      return null;
     }
   }
 
@@ -110,6 +126,7 @@ class _PatientRegistrationScreenState extends State<PatientRegistrationScreen> {
         gender: _selectedGender ?? 'Other',
         citizenCategory: _selectedCategory ?? 'General',
         maritalStatus: _selectedMaritalStatus,
+        contraceptiveMethod: _selectedContraceptive,
         migrationStatus: _selectedMigrationStatus ?? 'Resident',
         isHighRisk: _isHighRisk ? 1 : 0,
         lastModifiedAt: DateTime.now().toIso8601String(),
@@ -163,10 +180,6 @@ class _PatientRegistrationScreenState extends State<PatientRegistrationScreen> {
                   Navigator.pop(context); // Close dialog
                   Navigator.pop(context); // Back to Household List
                 },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFD35400),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
                 child: Text("Return to List", style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: Colors.white)),
               ),
             ),
@@ -198,7 +211,7 @@ class _PatientRegistrationScreenState extends State<PatientRegistrationScreen> {
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 24),
-              color: primaryColor.withOpacity(0.9),
+              color: primaryColor.withValues(alpha: 0.9),
               child: Text(
                 "Registering for: $_passedHouseholdName",
                 style: GoogleFonts.poppins(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
@@ -222,7 +235,7 @@ class _PatientRegistrationScreenState extends State<PatientRegistrationScreen> {
       padding: const EdgeInsets.symmetric(vertical: 20),
       decoration: BoxDecoration(
         color: primaryColor,
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4, offset: const Offset(0, 2))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 4, offset: const Offset(0, 2))],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -247,7 +260,7 @@ class _PatientRegistrationScreenState extends State<PatientRegistrationScreen> {
           width: 36,
           height: 36,
           decoration: BoxDecoration(
-            color: isCurrent ? Colors.white : (isActive ? Colors.white24 : Colors.transparent),
+            color: isCurrent ? Colors.white : (isActive ? Colors.white.withValues(alpha: 0.24) : Colors.transparent),
             shape: BoxShape.circle,
             border: Border.all(color: Colors.white, width: 2),
           ),
@@ -264,29 +277,28 @@ class _PatientRegistrationScreenState extends State<PatientRegistrationScreen> {
       width: 40,
       height: 2,
       margin: const EdgeInsets.only(left: 8, right: 8, bottom: 18),
-      color: _currentStep > step ? Colors.white : Colors.white24,
+      color: _currentStep > step ? Colors.white : Colors.white.withValues(alpha: 0.24),
     );
   }
 
   Widget _buildStepContent() {
     switch (_currentStep) {
       case 0:
-        return _buildPersonalDetails(key: const ValueKey('step0'));
+        return _buildPersonalDetails();
       case 1:
-        return _buildHealthDetails(key: const ValueKey('step1'));
+        return _buildHealthDetails();
       case 2:
-        return _buildSocialDetails(key: const ValueKey('step2'));
+        return _buildSocialDetails();
       default:
         return Container();
     }
   }
 
-  Widget _buildPersonalDetails({Key? key}) {
+  Widget _buildPersonalDetails() {
     return Column(
-      key: key,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader("Basic Information", "Enter the member's core identification details"),
+        _buildSectionHeader("Basic Information", "Member's identification details"),
         const SizedBox(height: 24),
         _buildTextField("Full Name", "Enter first and last name", _nameController, Icons.badge_outlined),
         const SizedBox(height: 16),
@@ -294,21 +306,16 @@ class _PatientRegistrationScreenState extends State<PatientRegistrationScreen> {
         const SizedBox(height: 16),
         _buildDropdown("Gender", ["Male", "Female", "Other"], _selectedGender, (val) => setState(() => _selectedGender = val), Icons.transgender_rounded),
         const SizedBox(height: 16),
-        _buildDropdown("Relationship to Head", ["Self", "Spouse", "Son", "Daughter", "Father", "Mother", "Other"], _selectedRelationship, (val) => setState(() => _selectedRelationship = val), Icons.family_restroom_rounded),
+        _buildTextField("Aadhaar Number", "12-digit number (Optional)", _aadhaarController, Icons.fingerprint_rounded, keyboardType: TextInputType.number, maxLength: 12),
       ],
     );
   }
 
-  Widget _buildHealthDetails({Key? key}) {
+  Widget _buildHealthDetails() {
     return Column(
-      key: key,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader("Health & Risks", "Vital health markers and risk identification"),
-        const SizedBox(height: 24),
-        _buildDropdown("Blood Group", ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-", "Unknown"], _selectedBloodGroup, (val) => setState(() => _selectedBloodGroup = val), Icons.bloodtype_outlined),
-        const SizedBox(height: 16),
-        _buildTextField("Weight (kg)", "0.0", _weightController, Icons.monitor_weight_outlined, keyboardType: TextInputType.number),
+        _buildSectionHeader("Health & Risk", "Risk identification and care needs"),
         const SizedBox(height: 24),
         Container(
           padding: const EdgeInsets.all(16),
@@ -321,7 +328,7 @@ class _PatientRegistrationScreenState extends State<PatientRegistrationScreen> {
             children: [
               Container(
                 padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(color: _isHighRisk ? Colors.redAccent.withOpacity(0.1) : const Color(0xFFF2F4F7), borderRadius: BorderRadius.circular(12)),
+                decoration: BoxDecoration(color: _isHighRisk ? Colors.redAccent.withValues(alpha: 0.1) : const Color(0xFFF2F4F7), borderRadius: BorderRadius.circular(12)),
                 child: Icon(Icons.warning_amber_rounded, color: _isHighRisk ? Colors.redAccent : const Color(0xFF667085)),
               ),
               const SizedBox(width: 16),
@@ -330,7 +337,7 @@ class _PatientRegistrationScreenState extends State<PatientRegistrationScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text("High Risk Case", style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: const Color(0xFF344054))),
-                    Text("Identify if patient needs extra care", style: GoogleFonts.poppins(fontSize: 12, color: const Color(0xFF667085))),
+                    Text("Does this patient need extra care?", style: GoogleFonts.poppins(fontSize: 12, color: const Color(0xFF667085))),
                   ],
                 ),
               ),
@@ -346,12 +353,11 @@ class _PatientRegistrationScreenState extends State<PatientRegistrationScreen> {
     );
   }
 
-  Widget _buildSocialDetails({Key? key}) {
+  Widget _buildSocialDetails() {
     return Column(
-      key: key,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader("Social & Migration", "Community and residential status"),
+        _buildSectionHeader("Social Status", "Community and residential details"),
         const SizedBox(height: 24),
         _buildDropdown("Citizen Category", ["General", "OBC", "SC", "ST"], _selectedCategory, (val) => setState(() => _selectedCategory = val), Icons.groups_outlined),
         const SizedBox(height: 16),
@@ -373,7 +379,7 @@ class _PatientRegistrationScreenState extends State<PatientRegistrationScreen> {
     );
   }
 
-  Widget _buildTextField(String label, String hint, TextEditingController controller, IconData icon, {TextInputType? keyboardType}) {
+  Widget _buildTextField(String label, String hint, TextEditingController controller, IconData icon, {TextInputType? keyboardType, int? maxLength}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -382,7 +388,17 @@ class _PatientRegistrationScreenState extends State<PatientRegistrationScreen> {
         TextFormField(
           controller: controller,
           keyboardType: keyboardType,
+          maxLength: maxLength,
           style: GoogleFonts.poppins(fontSize: 16),
+          validator: (value) {
+            if (label != "Aadhaar Number" && (value == null || value.isEmpty)) {
+              return 'This field is required';
+            }
+            if (label == "Aadhaar Number" && value != null && value.isNotEmpty && !RegExp(r'^[0-9]{12}$').hasMatch(value)) {
+              return 'Aadhaar must be 12 digits';
+            }
+            return null;
+          },
           decoration: _inputDecoration(hint, icon),
         ),
       ],
@@ -400,6 +416,7 @@ class _PatientRegistrationScreenState extends State<PatientRegistrationScreen> {
           readOnly: true,
           onTap: () => _selectDate(context),
           style: GoogleFonts.poppins(fontSize: 16),
+          validator: (value) => (value == null || value.isEmpty) ? 'Required' : null,
           decoration: _inputDecoration(hint, icon).copyWith(suffixIcon: const Icon(Icons.calendar_month_rounded, size: 20)),
         ),
       ],
@@ -413,9 +430,9 @@ class _PatientRegistrationScreenState extends State<PatientRegistrationScreen> {
         Text(label, style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w500, color: const Color(0xFF344054))),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
-          key: ValueKey(label),
           value: value,
           onChanged: onChanged,
+          validator: (value) => (value == null || value.isEmpty) ? 'Required' : null,
           decoration: _inputDecoration("Select $label", icon),
           items: items.map((e) => DropdownMenuItem(value: e, child: Text(e, style: GoogleFonts.poppins(fontSize: 16)))).toList(),
         ),
@@ -430,6 +447,7 @@ class _PatientRegistrationScreenState extends State<PatientRegistrationScreen> {
       prefixIcon: Icon(icon, size: 20, color: const Color(0xFF667085)),
       filled: true,
       fillColor: Colors.white,
+      counterText: "",
       contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
       enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFD0D5DD))),
       focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFD35400), width: 2)),
@@ -439,7 +457,7 @@ class _PatientRegistrationScreenState extends State<PatientRegistrationScreen> {
   Widget _buildBottomBar(Color primaryColor) {
     return Container(
       padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(color: Colors.white, boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5))]),
+      decoration: BoxDecoration(color: Colors.white, boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -5))]),
       child: Row(
         children: [
           if (_currentStep > 0) ...[

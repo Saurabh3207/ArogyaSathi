@@ -20,9 +20,32 @@ class DatabaseHelper {
     String path = join(await getDatabasesPath(), 'arogyasathi.db');
     return await openDatabase(
       path,
-      version: 1,
+      version: 2, // Bumped version for new columns
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
     );
+  }
+
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute('ALTER TABLE Household ADD COLUMN landmark TEXT');
+      await db.execute('ALTER TABLE Household ADD COLUMN locality TEXT');
+      await db.execute('ALTER TABLE Household ADD COLUMN house_type TEXT');
+      await db.execute('ALTER TABLE Household ADD COLUMN has_toilet INTEGER DEFAULT 0');
+      
+      // Update Sync_Status table to include created_at for better sorting
+      await db.execute('DROP TABLE IF EXISTS Sync_Status');
+      await db.execute('''
+        CREATE TABLE Sync_Status (
+          sync_id TEXT PRIMARY KEY,
+          entity_type TEXT NOT NULL,
+          entity_id TEXT NOT NULL,
+          operation TEXT NOT NULL,
+          sync_status TEXT NOT NULL,
+          created_at TEXT NOT NULL
+        )
+      ''');
+    }
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -50,6 +73,10 @@ class DatabaseHelper {
         family_surname TEXT,
         head_of_family_name TEXT NOT NULL,
         address TEXT NOT NULL,
+        landmark TEXT,
+        locality TEXT,
+        house_type TEXT,
+        has_toilet INTEGER DEFAULT 0,
         ration_card_type TEXT,
         total_members INTEGER DEFAULT 0,
         total_adults INTEGER DEFAULT 0,
@@ -91,6 +118,7 @@ class DatabaseHelper {
         anc_trimester INTEGER,
         maternal_weight REAL,
         blood_pressure TEXT,
+        hb_level REAL,
         supplements_given TEXT,
         last_modified_at TEXT NOT NULL,
         is_deleted INTEGER DEFAULT 0,
@@ -177,7 +205,8 @@ class DatabaseHelper {
         entity_type TEXT NOT NULL,
         entity_id TEXT NOT NULL,
         operation TEXT NOT NULL,
-        sync_status TEXT NOT NULL
+        sync_status TEXT NOT NULL,
+        created_at TEXT NOT NULL
       )
     ''');
 

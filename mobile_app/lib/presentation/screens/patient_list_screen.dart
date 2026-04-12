@@ -8,6 +8,8 @@ import 'immunization_form_screen.dart';
 import '../../data/local/database_helper.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../data/models/sync_status_model.dart';
+
 class PatientListScreen extends StatefulWidget {
   final String householdId;
   final String householdName;
@@ -126,7 +128,7 @@ class _PatientListScreenState extends State<PatientListScreen> {
         children: [
           Container(
             padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: primaryColor.withOpacity(0.1), borderRadius: BorderRadius.circular(14)),
+            decoration: BoxDecoration(color: primaryColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(14)),
             child: Icon(Icons.home_work_rounded, color: primaryColor, size: 28),
           ),
           const SizedBox(width: 16),
@@ -179,7 +181,7 @@ class _PatientListScreenState extends State<PatientListScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: member.isHighRisk == 1 ? Colors.redAccent.withOpacity(0.3) : const Color(0xFFEAECF0)),
+        border: Border.all(color: member.isHighRisk == 1 ? Colors.redAccent.withValues(alpha: 0.3) : const Color(0xFFEAECF0)),
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.all(16),
@@ -229,7 +231,7 @@ class _PatientListScreenState extends State<PatientListScreen> {
   Widget _buildBadge(String text, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
       child: Text(text, style: GoogleFonts.poppins(fontSize: 10, fontWeight: FontWeight.bold, color: color)),
     );
   }
@@ -281,13 +283,11 @@ class _PatientListScreenState extends State<PatientListScreen> {
               final db = await DatabaseHelper().database;
               await db.transaction((txn) async {
                 await txn.update('Patient', {'is_deleted': 1}, where: 'patient_id = ?', whereArgs: [patient.patientId]);
-                await txn.insert('Sync_Status', {
-                  'sync_id': const Uuid().v4(),
-                  'entity_type': 'Patient',
-                  'entity_id': patient.patientId,
-                  'operation': 'DELETE',
-                  'sync_status': 'PENDING',
-                });
+                await txn.insert('Sync_Status', SyncStatus(
+                  entityType: 'Patient',
+                  entityId: patient.patientId,
+                  operation: 'DELETE',
+                ).toMap());
               });
               Navigator.pop(context);
               _loadMembers();

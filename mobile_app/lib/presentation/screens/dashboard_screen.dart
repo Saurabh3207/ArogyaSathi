@@ -1,9 +1,13 @@
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:sqflite/sqflite.dart';
 import '../../generated/app_localizations.dart';
 import '../../data/repositories/household_repository.dart';
 import '../../data/repositories/patient_repository.dart';
+import '../../data/local/database_helper.dart';
+import '../../data/services/notification_service.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -18,12 +22,42 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   int _totalHouseholds = 0;
   int _totalPatients = 0;
+  int _pendingSync = 0;
   bool _isLoading = true;
+  String _ashaName = "Sunita Tai";
+  String _ashaWard = "Ward A - Sector 4";
+
+  List<Map<String, dynamic>> _upcomingVisits = [];
 
   @override
   void initState() {
     super.initState();
     _loadStats();
+    _loadSession();
+    _loadUpcomingVisits();
+    _initNotifications();
+  }
+
+  // Reload stats whenever returning to this screen
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _loadStats();
+    _loadUpcomingVisits();
+  }
+
+  Future<void> _initNotifications() async {
+    // Schedule reminders after a small delay to ensure DB is fully stable
+    await Future.delayed(const Duration(seconds: 1));
+    await NotificationService().scheduleReminders();
+  }
+
+  Future<void> _loadSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _ashaName = prefs.getString('asha_name') ?? "Sunita Tai";
+      _ashaWard = prefs.getString('asha_ward') ?? "Ward A - Sector 4";
+    });
   }
 
   Future<void> _loadStats() async {
@@ -31,14 +65,45 @@ class _DashboardScreenState extends State<DashboardScreen> {
     try {
       final houseCount = await _householdRepo.countTotal();
       final patientCount = await _patientRepo.countTotal();
+      
+      final db = await DatabaseHelper().database;
+      final pendingResult = await db.rawQuery("SELECT COUNT(*) FROM Sync_Status WHERE sync_status = 'PENDING'");
+      final pendingCount = Sqflite.firstIntValue(pendingResult) ?? 0;
+
       setState(() {
         _totalHouseholds = houseCount;
         _totalPatients = patientCount;
+        _pendingSync = pendingCount;
         _isLoading = false;
       });
     } catch (e) {
       setState(() => _isLoading = false);
     }
+  }
+
+  Future<void> _loadUpcomingVisits() async {
+    try {
+      final db = await DatabaseHelper().database;
+      // Get upcoming reminders from Local_Reminder table joined with Patient
+      final List<Map<String, dynamic>> results = await db.rawQuery('''
+        SELECT r.*, p.first_name 
+        FROM Local_Reminder r
+        JOIN Patient p ON r.patient_id = p.patient_id
+        WHERE r.is_triggered = 0 
+        ORDER BY r.scheduled_date ASC
+        LIMIT 5
+      ''');
+      setState(() {
+        _upcomingVisits = results;
+      });
+    } catch (e) {
+      print("Error loading visits: $e");
+    }
+  }
+
+  Future<void> _handleRefresh() async {
+    await _loadStats();
+    await _loadUpcomingVisits();
   }
 
   @override
@@ -54,7 +119,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       body: AnnotatedRegion<SystemUiOverlayStyle>(
         value: SystemUiOverlayStyle.light,
         child: RefreshIndicator(
-          onRefresh: _loadStats,
+          onRefresh: _handleRefresh,
           color: primaryColor,
           child: Column(
             children: [
@@ -81,7 +146,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       padding: const EdgeInsets.all(3),
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white.withOpacity(0.5), width: 2),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.5), width: 2),
                       ),
                       child: const CircleAvatar(
                         radius: 28,
@@ -95,7 +160,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            "नमस्ते, सुनीता ताई",
+                            "नमस्ते, $_ashaName",
                             style: GoogleFonts.poppins(
                               color: Colors.white,
                               fontSize: 22,
@@ -108,9 +173,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               const Icon(Icons.location_on_rounded, size: 14, color: Colors.white70),
                               const SizedBox(width: 4),
                               Text(
-                                "Ward A - Sector 4",
+                                _ashaWard,
                                 style: GoogleFonts.poppins(
-                                  color: Colors.white.withOpacity(0.9),
+                                  color: Colors.white.withValues(alpha: 0.9),
                                   fontSize: 13,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -141,7 +206,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           borderRadius: BorderRadius.circular(20),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.04),
+                              color: Colors.black.withValues(alpha: 0.04),
                               blurRadius: 15,
                               offset: const Offset(0, 5),
                             ),
@@ -154,7 +219,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             _buildStatDivider(),
                             _buildStatItem(_totalPatients.toString(), l10n.totalPatients, primaryColor),
                             _buildStatDivider(),
-                            _buildStatItem("05", "Pending", Colors.redAccent),
+                            _buildStatItem(_pendingSync.toString().padLeft(2, '0'), "Pending", Colors.redAccent),
                           ],
                         ),
                       ),
@@ -169,12 +234,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         crossAxisCount: 2,
                         mainAxisSpacing: 16,
                         crossAxisSpacing: 16,
-                        childAspectRatio: 1.15,
+                        childAspectRatio: 1.1,
                         children: [
                           _buildActionCard(
                             context,
                             l10n.householdRegistration,
-                            "Manage Houses",
+                            "Survey Houses",
                             Icons.house_rounded,
                             const Color(0xFFEBF5FF),
                             const Color(0xFF2196F3),
@@ -185,20 +250,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ),
                           _buildActionCard(
                             context,
-                            l10n.patientRegistration,
-                            "Add Member",
+                            "Member Reg.",
+                            "Add Individuals",
                             Icons.person_add_rounded,
                             const Color(0xFFF0FFF4),
                             secondaryColor,
                             onTap: () async {
+                              // Direct to household list to select where to add
                               await Navigator.pushNamed(context, '/household_list');
                               _loadStats();
                             },
                           ),
                           _buildActionCard(
                             context,
-                            l10n.maternalHealth,
-                            "Care & Visits",
+                            "Maternal Care",
+                            "ANC/PNC Visits",
                             Icons.pregnant_woman_rounded,
                             const Color(0xFFFFF5F5),
                             Colors.redAccent,
@@ -207,27 +273,91 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ),
                           _buildActionCard(
                             context,
+                            "NCD Screening",
+                            "BP & Sugar",
+                            Icons.monitor_heart_rounded,
+                            const Color(0xFFF3E5F5),
+                            Colors.purple,
+                            onTap: () => Navigator.pushNamed(context, '/household_list'), // Via patient list
+                          ),
+                          _buildActionCard(
+                            context,
+                            "Child Health",
+                            "Immunization",
+                            Icons.child_care_rounded,
+                            const Color(0xFFE0F7FA),
+                            Colors.cyan,
+                            onTap: () => Navigator.pushNamed(context, '/household_list'),
+                          ),
+                          _buildActionCard(
+                            context,
+                            "Health Camps",
+                            "Community Events",
+                            Icons.campaign_rounded,
+                            const Color(0xFFFFF3E0),
+                            Colors.orange,
+                            onTap: () => Navigator.pushNamed(context, '/camps'),
+                          ),
+                          _buildActionCard(
+                            context,
+                            "Visit Planner",
+                            "Daily Schedule",
+                            Icons.event_note_rounded,
+                            const Color(0xFFF1F8E9),
+                            Colors.lightGreen,
+                            onTap: () => Navigator.pushNamed(context, '/schedule'),
+                          ),
+                          _buildActionCard(
+                            context,
                             l10n.syncRecords,
-                            "Cloud Sync",
+                            "Cloud Upload",
                             Icons.cloud_sync_rounded,
                             const Color(0xFFFFF9DB),
                             primaryColor,
+                            onTap: () => Navigator.pushNamed(context, '/sync-center'),
                           ),
                         ],
                       ),
 
                       const SizedBox(height: 32),
 
-                      _buildSectionHeader("Upcoming Visits", null),
+                      _buildSectionHeader("Upcoming Visits", "View Schedule", onActionTap: () => Navigator.pushNamed(context, '/schedule')),
                       const SizedBox(height: 16),
-                      _buildVisitTile("Janaki Sharma", "Prenatal Checkup", "10:30 AM", "Urgent"),
-                      _buildVisitTile("Rahul G.", "Vaccination (Dose 2)", "02:15 PM", "Pending"),
+                      if (_upcomingVisits.isEmpty)
+                        _buildEmptyVisits()
+                      else
+                        ..._upcomingVisits.map((visit) => _buildVisitTile(
+                          visit['first_name'], 
+                          visit['reminder_type'], 
+                          visit['scheduled_date'].toString().split('T').first, 
+                          "Pending"
+                        )),
                     ],
                   ),
                 ),
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyVisits() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFF2F4F7)),
+      ),
+      child: Center(
+        child: Column(
+          children: [
+            Icon(Icons.event_available_rounded, size: 40, color: Colors.grey[300]),
+            const SizedBox(height: 8),
+            Text("No visits scheduled for today", style: GoogleFonts.poppins(color: Colors.grey[500], fontSize: 13)),
+          ],
         ),
       ),
     );
@@ -269,7 +399,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         border: Border.all(color: const Color(0xFFF2F4F7)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -431,7 +561,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.15),
+              color: Colors.white.withValues(alpha: 0.15),
               shape: BoxShape.circle,
             ),
             child: Icon(icon, color: Colors.white, size: 24),
@@ -473,8 +603,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           ListTile(
             leading: const Icon(Icons.people_alt_rounded),
-            title: const Text("My Patients"),
+            title: const Text("Households"),
             onTap: () => Navigator.pushNamed(context, '/household_list'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.pregnant_woman_rounded),
+            title: const Text("Maternal Health"),
+            onTap: () => Navigator.pushNamed(context, '/maternal_health'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.campaign_rounded),
+            title: const Text("Health Camps"),
+            onTap: () => Navigator.pushNamed(context, '/camps'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.calendar_month_rounded),
+            title: const Text("Visits Schedule"),
+            onTap: () => Navigator.pushNamed(context, '/schedule'),
           ),
           ListTile(
             leading: const Icon(Icons.sync_rounded),
@@ -503,7 +648,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20)],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 20)],
       ),
       child: BottomNavigationBar(
         elevation: 0,
