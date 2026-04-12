@@ -1,0 +1,59 @@
+name: mobile_app
+description: "ArogyaSathi – Offline-First Mobile Health Record System for ASHA Workers."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.10.7
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  
+  # Database & Storage
+  sqflite: ^2.4.2
+  path: ^1.9.1
+  
+  # Utilities
+  uuid: ^4.5.3
+  intl: ^0.20.2
+  path_provider: ^2.1.5
+  google_fonts: ^6.2.1
+  
+  # Networking
+  http: ^1.1.0
+  connectivity_plus: ^7.1.1
+  workmanager: ^0.9.0
+  
+  # State Management
+  provider: ^6.1.5
+  
+  # Notifications
+  awesome_notifications: ^0.11.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.0
+  flutter_native_splash: ^2.3.13
+
+flutter_native_splash:
+  color: "#D35400"
+  image: assets/images/splash-scren.jpeg
+  android_12:
+    image: assets/images/splash-scren.jpeg
+    color: "#D35400"
+  fullscreen: true
+
+flutter:
+  uses-material-design: true
+  generate: true
+
+  assets:
+    - assets/images/splash-scren.jpeg
+    - assets/images/aasha-logo1.jpg
+    - assets/images/asha_vector.png
