@@ -1,0 +1,120 @@
+====================================================================
+PROJECT MASTER FILE: AROGYASATHI (FINAL DRAFT)
+====================================================================
+Project Name: ArogyaSathi
+Project Type: Mobile Health Application (Offline-First EHR)
+Primary Users: ASHA Workers (Rural Healthcare Volunteers)
+Technology Stack: Flutter (Frontend), SQLite (Local DB), FastAPI (Backend), Python
+
+====================================================================
+1. PROJECT OVERVIEW & PROBLEM STATEMENT
+====================================================================
+ASHA workers manage over 30 distinct responsibilities—from maternal care to disease control—relying heavily on paper registers. Because internet connectivity in rural areas is unreliable, conventional cloud-based EHR systems fail, leading to data loss and reporting delays. 
+
+ArogyaSathi solves this by providing a true "offline-first" application. It stores all survey and patient data locally on the mobile device and automatically synchronizes with a central server whenever an internet connection is detected. It uses a strict "last-write-wins" conflict resolution strategy and soft-deletes to ensure absolute data integrity.
+
+====================================================================
+2. CORE FUNCTIONAL MODULES
+====================================================================
+1. Authentication Module: Secure online login that stores an encrypted session token locally, allowing offline use for weeks.
+2. Household Management: Groups citizens into "Households" to avoid redundant data entry and track family metrics (e.g., ration cards).
+3. Patient & Survey Module: Tracks individual demographics, migration status, family planning, and tags high-risk cases.
+4. Health Record & NCD Module: Logs Routine checkups, ANC visits, and NCD screening scores (Hypertension, Diabetes).
+5. Immunization Module: Automatically calculates child vaccine due dates based on exact Date of Birth.
+6. Camp Mobilization Module: Allows ASHAs to schedule health/vaccine camps and auto-generates "Due Lists" of families to notify based on DB queries.
+7. Vital Events Module: Instantly logs births and deaths in the village for rapid PHC reporting.
+8. Reminder Module: Triggers local Flutter push notifications for upcoming vaccines, ANC follow-ups, and camps entirely offline.
+9. Offline Sync Manager: Detects internet, batches unsynced SQLite records, and pushes them to the FastAPI server.
+
+====================================================================
+3. ASHA WORKER DAILY FLOW (DAY IN THE LIFE)
+====================================================================
+This app is designed for a 5-hour rural workday with zero loading screens.
+
+* Step 1: App Launch (Offline) -> Verifies local session token; no internet needed.
+* Step 2: Morning Dashboard -> Loads daily priorities locally (e.g., "2 infants missed Polio drops," "Vaccination Camp in 3 days: 12 families to notify").
+* Step 3: Village Navigation -> Searches by "House 42" or "Deshmukh". The full family profile pops up instantly.
+* Step 4: Context-Aware Recording -> Logs an infant's vaccine. The app auto-schedules a local push notification for the next dose in 4 weeks.
+* Step 5: Background Sync -> Saves the record locally in milliseconds. Later, when connected to Wi-Fi at the PHC, the background Sync Manager silently pushes the day's payload to the server.
+
+====================================================================
+4. ENTITY-RELATIONSHIP (ER) PLAN
+====================================================================
+The database is highly normalized for offline SQLite performance.
+* ASHA_Worker (1) ----- (N) Household
+* Household (1) ----- (N) Patient
+* Patient (1) ----- (N) Health_Visit
+* Patient (1) ----- (N) Immunization_Record
+* Patient (1) ----- (N) NCD_Screening
+* Patient (1) ----- (1) Vital_Events
+* ASHA_Worker (1) ----- (N) Camp_Event
+
+Constraint: ALL primary keys MUST use UUIDs to prevent ID collisions during offline synchronization.
+
+====================================================================
+5. HARDENED DATABASE SCHEMA DESIGN
+====================================================================
+*Note: Every core table includes a `last_modified_at` timestamp for conflict resolution and an `is_deleted` boolean to support offline "soft deletes."*
+
+TABLE 1: ASHA_Worker
+* asha_id (TEXT, PK, UUID)
+* name, phone, village, phc_name, auth_token, session_expiry, last_modified_at, is_deleted
+
+TABLE 2: Household
+* household_id (TEXT, PK, UUID), asha_id (TEXT, FK)
+* house_number, family_surname, head_of_family_name, address, ration_card_type
+* total_members, total_adults, total_children (Auto-updated via DB Triggers)
+* last_modified_at, is_deleted
+
+TABLE 3: Patient (Expanded for Surveys)
+* patient_id (TEXT, PK, UUID), household_id (TEXT, FK)
+* first_name, date_of_birth, gender, citizen_category ('Infant', 'Pregnant', etc.)
+* marital_status, contraceptive_method, migration_status
+* is_high_risk (BOOLEAN, DEFAULT FALSE)
+* last_modified_at, is_deleted
+
+TABLE 4: Health_Visit
+* visit_id (TEXT, PK, UUID), patient_id (TEXT, FK), asha_id (TEXT, FK)
+* visit_date, visit_type ('Routine', 'ANC', etc.), health_observation
+* anc_trimester, maternal_weight, blood_pressure, supplements_given
+* last_modified_at, is_deleted
+
+TABLE 5: NCD_Screening (For citizens 30+)
+* screening_id (TEXT, PK, UUID), patient_id (TEXT, FK)
+* screening_date, hypertension_risk, diabetes_risk, cancer_screening_status
+* last_modified_at, is_deleted
+
+TABLE 6: Vital_Events
+* event_id (TEXT, PK, UUID), patient_id (TEXT, FK)
+* event_type ('Birth' or 'Death'), event_date, reported_to_phc
+* last_modified_at, is_deleted
+
+TABLE 7: Immunization_Record
+* immunization_id (TEXT, PK, UUID), patient_id (TEXT, FK)
+* vaccine_name, dose_number, date_administered, next_due_date
+* last_modified_at, is_deleted
+
+TABLE 8: Camp_Event
+* camp_id (TEXT, PK, UUID), asha_id (TEXT, FK)
+* camp_type, camp_date, location
+* last_modified_at, is_deleted
+
+TABLE 9: Local_Reminder & Sync_Status (System Utilities)
+* local_reminder: reminder_id (PK), patient_id (FK), reference_id (FK to specific visit/vaccine), scheduled_date, is_triggered.
+* sync_status: sync_id (PK), entity_type, entity_id (UUID of changed record), operation ('CREATE', 'UPDATE', 'SOFT_DELETE'), sync_status ('PENDING', 'SYNCED').
+
+====================================================================
+6. THE SYNCHRONIZATION ENGINE
+====================================================================
+1. Local Modification: Offline changes update the row's `last_modified_at` timestamp and insert a 'PENDING' row into `Sync_Status`.
+2. Payload Assembly: Flutter Sync Manager detects internet, queries 'PENDING' records, and packages them into a JSON batch array.
+3. Server Conflict Resolution: FastAPI receives the payload. If a record exists, it compares timestamps. The most recent timestamp overwrites older data (Last-Write-Wins).
+4. Local Cleanup: FastAPI responds with successfully processed UUIDs. Flutter updates those local `Sync_Status` rows to 'SYNCED'.
+
+====================================================================
+7. FUTURE SCOPE (PHASE 2)
+====================================================================
+1. Auto-Generating Incentive Claims: Introduction of a `Task_Log` module. Completed tasks log automatically to generate a billable checklist for the ANM/PHC at month's end.
+2. 5-Hour Workday Optimizations: "Quick-Logs" (e.g., a 2-tap Drug Kit distribution log) to reduce form fatigue.
+3. Auto-SMS for Camps: A backend integration where FastAPI sends localized SMS reminders to families scheduled for camps.
+4. Role-Based Access Control (RBAC): Primary Health Centre (PHC) Admin Dashboard for aggregated reporting.
