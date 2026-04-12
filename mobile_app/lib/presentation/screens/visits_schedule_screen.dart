@@ -157,8 +157,8 @@ class _VisitsScheduleScreenState extends State<VisitsScheduleScreen> {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: isActive ? primaryColor.withOpacity(0.3) : const Color(0xFFEAECF0)),
-              boxShadow: isActive ? [BoxShadow(color: primaryColor.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 4))] : [],
+              border: Border.all(color: isActive ? primaryColor.withValues(alpha: 0.3) : const Color(0xFFEAECF0)),
+              boxShadow: isActive ? [BoxShadow(color: primaryColor.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4))] : [],
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -185,7 +185,7 @@ class _VisitsScheduleScreenState extends State<VisitsScheduleScreen> {
                   children: [
                     _buildActionButton(Icons.call_rounded, "Call", const Color(0xFFF2F4F7), const Color(0xFF344054)),
                     const SizedBox(width: 12),
-                    _buildActionButton(Icons.check_circle_rounded, "Done", primaryColor.withOpacity(0.1), primaryColor),
+                    _buildActionButton(Icons.check_circle_rounded, "Done", primaryColor.withValues(alpha: 0.1), primaryColor),
                   ],
                 ),
               ],

@@ -125,7 +125,7 @@ class _ImmunizationFormScreenState extends State<ImmunizationFormScreen> {
   Widget _buildChildHeader(Color primaryColor) {
     return Container(
       padding: const EdgeInsets.all(24),
-      color: primaryColor.withOpacity(0.05),
+      color: primaryColor.withValues(alpha: 0.05),
       child: Row(
         children: [
           Container(
@@ -201,7 +201,7 @@ class _ImmunizationFormScreenState extends State<ImmunizationFormScreen> {
           if (!isDone) 
             TextButton(
               onPressed: () => _markAdministered(name),
-              style: TextButton.styleFrom(backgroundColor: primaryColor.withOpacity(0.1), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+              style: TextButton.styleFrom(backgroundColor: primaryColor.withValues(alpha: 0.1), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
               child: Text("ADMINISTER", style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.bold, color: primaryColor)),
             )
           else 
